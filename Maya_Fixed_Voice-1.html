@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#11152b">
+<title>Maya Voice Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#11152b;color:#f7f7ff;font:16px system-ui,sans-serif}
+main{max-width:520px;margin:auto;padding:22px 16px}.card{background:#1b2140;border:1px solid #353d65;border-radius:20px;padding:18px;margin:14px 0}
+h1{margin:0;font-size:28px}p{color:#c3c9e4;line-height:1.5}.orb{width:112px;height:112px;border-radius:50%;margin:18px auto;background:linear-gradient(135deg,#ff77c8,#7b72ff);display:grid;place-items:center;font-size:42px;box-shadow:0 0 35px #9870ff55}
+button,select,input{font:inherit;border-radius:12px;padding:13px;width:100%;margin-top:9px}
+button{border:0;background:#8175ff;color:white;font-weight:700}button.secondary{background:#30385f}select,input{background:#10152b;color:white;border:1px solid #444e7c}
+#status{padding:12px;background:#11162e;border-radius:12px;min-height:45px;overflow-wrap:anywhere}
+.small{font-size:13px}
+</style>
+</head>
+<body><main>
+<h1>✦ Maya</h1><p>Female Voice Assistant · Hindi + English</p>
+<section class="card"><div class="orb">♫</div><div id="status">पहले “Test Voice” दबाएँ।</div>
+<button id="test">🔊 Test Voice</button><button id="refresh" class="secondary">Refresh Voices</button>
+<label for="voice">Available voice / आवाज़ चुनें</label><select id="voice"><option value="">Default voice</option></select>
+<label for="lang">भाषा</label><select id="lang"><option value="hi-IN">Hindi</option><option value="en-IN">English (India)</option></select>
+</section>
+<section class="card"><h3>बोलकर कमांड दें</h3><button id="listen">🎙️ Start Listening</button><button id="stop" class="secondary">Stop Listening</button>
+<p id="heard">आपकी बात यहाँ दिखेगी।</p>
+<p class="small">अगर माइक काम न करे, तो Chrome में साइट की Microphone permission Allow करें। कुछ browsers में local HTML फाइल से voice recognition नहीं चलता; तब इसे किसी trusted HTTPS webpage पर चलाना या Android app बनाना होगा।</p></section>
+<section class="card"><h3>सीमित कमांड</h3><p class="small">“नमस्ते”, “समय बताओ”, “तारीख बताओ”, “YouTube खोलो”, “Google खोलो”, या “Search cats” बोलकर देखें। यह HTML फोन का पूरा कंट्रोल नहीं ले सकती।</p></section>
+<script>
+const $=id=>document.getElementById(id);
+function voices(){return ('speechSynthesis' in window)?speechSynthesis.getVoices():[]}
+function fillVoices(){const s=$('voice'),old=s.value;s.innerHTML='<option value="">Default voice</option>';voices().forEach((v,i)=>{let o=document.createElement('option');o.value=String(i);o.textContent=v.name+' — '+v.lang;s.appendChild(o)});if([...s.options].some(o=>o.value===old))s.value=old;$('status').textContent=voices().length?'आवाज़ें मिलीं: '+voices().length:'अभी voice list नहीं मिली। Default voice के साथ Test करें।'}
+function speak(text){if(!('speechSynthesis'in window)){$('status').textContent='इस browser में Text-to-Speech उपलब्ध नहीं है।';return}
+speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(text);u.lang=$('lang').value;u.rate=.92;u.pitch=1.12;let list=voices(),idx=$('voice').value;if(idx!==''&&list[Number(idx)])u.voice=list[Number(idx)];else{let v=list.find(x=>/female|woman|zira|samantha|heera|veena|lekha/i.test(x.name))||list.find(x=>x.lang.toLowerCase().startsWith('hi'))||list[0];if(v)u.voice=v}
+u.onstart=()=>$('status').textContent='Maya बोल रही है…';u.onend=()=>$('status').textContent='Voice test पूरा हुआ।';u.onerror=e=>$('status').textContent='आवाज़ error: '+e.error; speechSynthesis.speak(u)}
+$('test').onclick=()=>speak($('lang').value==='hi-IN'?'नमस्ते! मैं माया हूँ। अब मेरी आवाज़ सुनाई देनी चाहिए।':'Hello! I am Maya. This is a voice test.');
+$('refresh').onclick=()=>{if('speechSynthesis'in window){speechSynthesis.getVoices();setTimeout(fillVoices,400)}else $('status').textContent='इस browser में speech synthesis उपलब्ध नहीं है।'};
+if('speechSynthesis'in window){speechSynthesis.onvoiceschanged=fillVoices;fillVoices();setTimeout(fillVoices,700)}
+let rec;
+$('listen').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){$('heard').textContent='इस browser में voice recognition उपलब्ध नहीं है। Chrome में खोलकर कोशिश करें; local file पर यह फिर भी सीमित हो सकता है।';return}
+try{rec=new SR();rec.lang=$('lang').value;rec.continuous=true;rec.interimResults=true;rec.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;$('heard').textContent=t;if(e.results[e.results.length-1].isFinal)command(t)};rec.onerror=e=>$('heard').textContent='Microphone error: '+e.error;rec.start();$('heard').textContent='सुन रही हूँ…'}catch(e){$('heard').textContent='Listening शुरू नहीं हो पाई: '+e.message}};
+$('stop').onclick=()=>{if(rec)rec.stop();$('heard').textContent='Listening बंद है।'};
+function command(raw){let q=raw.toLowerCase();if(q.includes('समय')||q.includes('time'))speak('अभी समय है '+new Date().toLocaleTimeString('hi-IN',{hour:'numeric',minute:'2-digit'}));else if(q.includes('तारीख')||q.includes('date'))speak('आज '+new Date().toLocaleDateString('hi-IN')+' है।');else if(q.includes('youtube')||q.includes('यूट्यूब')){speak('YouTube खोल रही हूँ');window.open('https://m.youtube.com','_blank')}else if(q.includes('google')||q.includes('गूगल')){speak('Google खोल रही हूँ');window.open('https://google.com','_blank')}else if(q.includes('search')||q.includes('खोज')){let term=raw.replace(/search|खोजो|खोज|सर्च/ig,'').trim();speak('Google पर खोज रही हूँ');window.open('https://google.com/search?q='+encodeURIComponent(term),'_blank')}else speak('मैंने सुना: '+raw+'. यह कमांड अभी समर्थित नहीं है।')}
+</script></main></body></html>
